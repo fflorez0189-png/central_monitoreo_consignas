@@ -11,7 +11,8 @@
 <section class="panel" id="setup"><h2>Configuración inicial</h2><p class="muted">Antes de usar la aplicación, escribe la URL del proyecto Supabase y su clave <b>pública</b> (sb_publishable_...). Nunca ingreses una clave secreta.</p><label>URL de Supabase</label><input id="url" placeholder="https://proyecto.supabase.co"><label>Clave pública</label><input id="key" placeholder="sb_publishable_..."><button id="configure">Conectar</button><p id="setupMsg"></p></section>
 <section class="panel hidden" id="login"><h2>Ingreso de operadores</h2><label>Correo electrónico</label><input id="email" type="email" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"><button id="signIn">Ingresar</button><p id="loginMsg"></p></section>
 <div class="hidden" id="app"><section class="panel top"><div><strong id="identity"></strong><div class="muted" id="role"></div></div><button class="secondary" id="signOut">Cerrar sesión</button></section>
-<section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea><div class="grid"><div><label>Puesto o servicio</label><input id="post" placeholder="Ej. Central de Monitoreo"></div><div><label>Prioridad</label><select id="priority"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baja</option></select></div><div><label>Responsable</label><input id="responsible"></div><div><label>Fecha límite (opcional)</label><input id="deadline" type="datetime-local"></div></div><button type="submit">Registrar consigna</button><p id="createMsg"></p></form></section>
+<section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea><
+<button type="button" id="microfono" onclick="dictarConsigna()">🎤 Dictar consigna</button>                                                                                                                                                                div class="grid"><div><label>Puesto o servicio</label><input id="post" placeholder="Ej. Central de Monitoreo"></div><div><label>Prioridad</label><select id="priority"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baja</option></select></div><div><label>Responsable</label><input id="responsible"></div><div><label>Fecha límite (opcional)</label><input id="deadline" type="datetime-local"></div></div><button type="submit">Registrar consigna</button><p id="createMsg"></p></form></section>
 <section class="panel"><div class="top"><h2>Consignas registradas</h2><button id="refresh" class="secondary">Actualizar lista</button></div><div class="grid"><div><label>Filtrar por estado</label><select id="filter"><option value="">Todos</option><option>Pendiente</option><option>Cumplida</option><option>Reprogramada</option></select></div><div><label>Buscar</label><input id="search" placeholder="Descripción, puesto, responsable"></div></div><p id="listMsg"></p><div id="list"></div></section></div>
 </main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const $=id=>document.getElementById(id);let client=null,profile=null,records=[];
@@ -28,4 +29,38 @@ async function load(){msg('listMsg','Cargando...');const {data,error}=await clie
 function render(){const state=$('filter').value,query=$('search').value.toLowerCase();$('list').replaceChildren();const filtered=records.filter(r=>(!state||r.estado===state)&&[r.descripcion,r.puesto_servicio,r.responsable].some(v=>clean(v).toLowerCase().includes(query)));if(!filtered.length){$('list').textContent='No hay consignas para mostrar.';return}for(const r of filtered){const card=document.createElement('div');card.className='item';const title=document.createElement('strong');title.textContent=`#${r.id} · ${clean(r.descripcion)}`;card.append(title);const detail=document.createElement('p');detail.textContent=`Puesto: ${clean(r.puesto_servicio)||'—'} | Prioridad: ${clean(r.prioridad)} | Estado: ${clean(r.estado)} | Responsable: ${clean(r.responsable)||'—'}`;card.append(detail);const meta=document.createElement('small');meta.textContent=`Registró: ${clean(r.operador_registra)||'—'} · Fecha: ${format(r.fecha_registro||r.fecha_creacion)} · Límite: ${format(r.fecha_limite)}`;card.append(meta);const sel=document.createElement('select');sel.style.marginTop='12px';for(const status of ['Pendiente','Cumplida','Reprogramada']){const opt=document.createElement('option');opt.textContent=status;opt.value=status;sel.append(opt)}sel.value=r.estado||'Pendiente';const notes=document.createElement('input');notes.placeholder='Observaciones de seguimiento';notes.value=r.observaciones||'';notes.style.marginTop='8px';const button=document.createElement('button');button.textContent='Guardar seguimiento';button.onclick=async()=>{button.disabled=true;try{const changes={estado:sel.value,observaciones:notes.value.trim()||null,fecha_actualizacion:new Date().toISOString()};if(sel.value==='Cumplida'&&r.estado!=='Cumplida')changes.fecha_cumplimiento=new Date().toISOString();if(sel.value!=='Cumplida'&&r.estado==='Cumplida')changes.fecha_cumplimiento=null;const {error}=await client.from('consignas').update(changes).eq('id',r.id);if(error)throw error;await load()}catch(err){alert('No se pudo actualizar: '+err.message)}finally{button.disabled=false}};card.append(sel,notes,button);$('list').append(card)}}
 $('filter').onchange=render;$('search').oninput=render;$('refresh').onclick=load;
 try{const url=localStorage.getItem('supabase_url'),key=localStorage.getItem('supabase_public_key');if(url&&key){$('url').value=url;$('key').value=key;saveConfig();checkSession()}}catch(e){msg('setupMsg',e.message,true)}
+
+function dictarConsigna() {
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!Reconocimiento) {
+    alert("El navegador no permite dictado por voz. Pruebe con Google Chrome.");
+    return;
+  }
+
+  const reconocimiento = new Reconocimiento();
+  reconocimiento.lang = "es-CO";
+  reconocimiento.continuous = true;
+  reconocimiento.interimResults = false;
+
+  reconocimiento.onresult = function(evento) {
+    const campo = document.getElementById("descripcion");
+    let texto = "";
+
+    for (let i = evento.resultIndex; i < evento.results.length; i++) {
+      if (evento.results[i].isFinal) {
+        texto += evento.results[i][0].transcript + " ";
+      }
+    }
+
+    campo.value += (campo.value && texto ? " " : "") + texto.trim();
+  };
+
+  reconocimiento.onerror = function(evento) {
+    alert("No se pudo utilizar el micrófono: " + evento.error);
+  };
+
+  reconocimiento.start();
+}
+
 </script></body></html>
