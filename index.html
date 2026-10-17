@@ -40,7 +40,7 @@ function dictarConsigna() {
 
   const reconocimiento = new Reconocimiento();
   reconocimiento.lang = "es-CO";
-  reconocimiento.continuous = true;
+  reconocimiento.continuous = false;
   reconocimiento.interimResults = false;
 
   reconocimiento.onresult = function(evento) {
