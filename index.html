@@ -44,7 +44,7 @@ function dictarConsigna() {
   reconocimiento.interimResults = false;
 
   reconocimiento.onresult = function(evento) {
-    const campo = document.getElementById("descripcion");
+    const campo = document.getElementById("description");
     let texto = "";
 
     for (let i = evento.resultIndex; i < evento.results.length; i++) {
