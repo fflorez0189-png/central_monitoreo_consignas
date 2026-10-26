@@ -4,14 +4,14 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Central de Monitoreo | Consignas</title>
 <style>
-:root{font-family:system-ui,Arial,sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}header{background:#102d4d;color:white;padding:20px}main{max-width:1050px;margin:24px auto;padding:0 16px}.panel{background:white;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 9px #0001}h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem}label{display:block;font-weight:600;margin:12px 0 4px}input,select,textarea,button{font:inherit;padding:10px;border-radius:7px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:85px}button{background:#14558c;color:white;border:0;cursor:pointer;margin-top:12px}button.secondary{background:#475569}button:disabled{opacity:.55;cursor:wait}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.hidden{display:none}.muted{color:#64748b}.error{color:#a11b1b}.ok{color:#166534}.item{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}small{color:#64748b}#list{max-height:65vh;overflow:auto}
+:root{font-family:system-ui,Arial,sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}header{background:#102d4d;color:white;padding:20px}main{max-width:1050px;margin:24px auto;padding:0 16px}.panel{background:white;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 9px #0001}h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem}label{display:block;font-weight:600;margin:12px 0 4px}input,select,textarea,button{font:inherit;padding:10px;border-radius:7px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:85px}button{background:#14558c;color:white;border:0;cursor:pointer;margin-top:12px}button.secondary{background:#475569}button:disabled{opacity:.55;cursor:wait}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.hidden{display:none}.muted{color:#64748b}.error{color:#a11b1b}.ok{color:#166534}.item{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}small{color:#64748b}#list{max-height:65vh;overflow:auto}.history{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:10px;margin-top:12px}.history-text{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}
 </style>
 </head>
-<body><header><h1>Central de Monitoreo</h1><div>Gestión de consignas · Vigilamos Juntos Seguridad Ltda.</div></header><main>
+<body><header><h1>Central de Monitoreo</h1><div>Gestión de consignas · Vigilamos Juntos Seguridad Ltda. · Versión de prueba</div></header><main>
 <section class="panel" id="setup"><h2>Configuración inicial</h2><p class="muted">Antes de usar la aplicación, escribe la URL del proyecto Supabase y su clave <b>pública</b> (sb_publishable_...). Nunca ingreses una clave secreta.</p><label>URL de Supabase</label><input id="url" placeholder="https://proyecto.supabase.co"><label>Clave pública</label><input id="key" placeholder="sb_publishable_..."><button id="configure">Conectar</button><p id="setupMsg"></p></section>
 <section class="panel hidden" id="login"><h2>Ingreso de operadores</h2><label>Correo electrónico</label><input id="email" type="email" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"><button id="signIn">Ingresar</button><p id="loginMsg"></p></section>
 <div class="hidden" id="app"><section class="panel top"><div><strong id="identity"></strong><div class="muted" id="role"></div></div><button class="secondary" id="signOut">Cerrar sesión</button></section>
-<section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea><
+<section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea>
 <button type="button" id="microfono" onclick="dictarConsigna()">🎤 Dictar consigna</button>                                                                                                                                                                <div class="grid"><div><label>Puesto o servicio</label><input id="post" placeholder="Ej. Central de Monitoreo"></div><div><label>Prioridad</label><select id="priority"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baja</option></select></div><div><label>Responsable</label><input id="responsible"></div><div><label>Fecha límite (opcional)</label><input id="deadline" type="datetime-local"></div></div><button type="submit">Registrar consigna</button><p id="createMsg"></p></form></section>
 <section class="panel"><div class="top"><h2>Consignas registradas</h2><button id="refresh" class="secondary">Actualizar lista</button></div><div class="grid"><div><label>Filtrar por estado</label><select id="filter"><option value="">Todos</option><option>Pendiente</option><option>Cumplida</option><option>Reprogramada</option></select></div><div><label>Buscar</label><input id="search" placeholder="Descripción, puesto, responsable"></div></div><p id="listMsg"></p><div id="list"></div></section></div>
 </main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
@@ -26,7 +26,46 @@ $('signIn').onclick=async()=>{const btn=$('signIn');btn.disabled=true;msg('login
 $('signOut').onclick=async()=>{await client.auth.signOut();profile=null;$('app').classList.add('hidden');$('login').classList.remove('hidden');$('password').value=''};
 $('createForm').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;msg('createMsg','Guardando...');try{const payload={creado_por:(await client.auth.getUser()).data.user.id,descripcion:$('description').value.trim(),puesto_servicio:$('post').value.trim()||null,prioridad:$('priority').value,estado:'Pendiente',responsable:$('responsible').value.trim()||null,operador_registra:profile.nombre||null,fecha_limite:$('deadline').value?new Date($('deadline').value).toISOString():null};if(!payload.descripcion)throw Error('Escribe una descripción.');const {error}=await client.from('consignas').insert(payload);if(error)throw error;msg('createMsg','Consigna registrada correctamente.');e.target.reset();await load()}catch(err){msg('createMsg',err.message,true)}finally{btn.disabled=false}};
 async function load(){msg('listMsg','Cargando...');const {data,error}=await client.from('consignas').select('*').order('id',{ascending:false}).limit(200);if(error){msg('listMsg',error.message,true);return}records=data||[];msg('listMsg',`${records.length} consigna(s) cargada(s).`);render()}
-function render(){const state=$('filter').value,query=$('search').value.toLowerCase();$('list').replaceChildren();const filtered=records.filter(r=>(!state||r.estado===state)&&[r.descripcion,r.puesto_servicio,r.responsable].some(v=>clean(v).toLowerCase().includes(query)));if(!filtered.length){$('list').textContent='No hay consignas para mostrar.';return}for(const r of filtered){const card=document.createElement('div');card.className='item';const title=document.createElement('strong');title.textContent=`#${r.id} · ${clean(r.descripcion)}`;card.append(title);const detail=document.createElement('p');detail.textContent=`Puesto: ${clean(r.puesto_servicio)||'—'} | Prioridad: ${clean(r.prioridad)} | Estado: ${clean(r.estado)} | Responsable: ${clean(r.responsable)||'—'}`;card.append(detail);const meta=document.createElement('small');meta.textContent=`Registró: ${clean(r.operador_registra)||'—'} · Fecha: ${format(r.fecha_registro||r.fecha_creacion)} · Límite: ${format(r.fecha_limite)}`;card.append(meta);const sel=document.createElement('select');sel.style.marginTop='12px';for(const status of ['Pendiente','Cumplida','Reprogramada']){const opt=document.createElement('option');opt.textContent=status;opt.value=status;sel.append(opt)}sel.value=r.estado||'Pendiente';const notes=document.createElement('input');notes.placeholder='Observaciones de seguimiento';notes.value=r.observaciones||'';notes.style.marginTop='8px';const button=document.createElement('button');button.textContent='Guardar seguimiento';button.onclick=async()=>{button.disabled=true;try{const changes={estado:sel.value,observaciones:notes.value.trim()||null,fecha_actualizacion:new Date().toISOString()};if(sel.value==='Cumplida'&&r.estado!=='Cumplida')changes.fecha_cumplimiento=new Date().toISOString();if(sel.value!=='Cumplida'&&r.estado==='Cumplida')changes.fecha_cumplimiento=null;const {error}=await client.from('consignas').update(changes).eq('id',r.id);if(error)throw error;await load()}catch(err){alert('No se pudo actualizar: '+err.message)}finally{button.disabled=false}};card.append(sel,notes,button);$('list').append(card)}}
+function render(){
+  const state=$('filter').value, query=$('search').value.toLowerCase();
+  $('list').replaceChildren();
+  const filtered=records.filter(r=>(!state||r.estado===state)&&[r.descripcion,r.puesto_servicio,r.responsable].some(v=>clean(v).toLowerCase().includes(query)));
+  if(!filtered.length){$('list').textContent='No hay consignas para mostrar.';return}
+  for(const r of filtered){
+    const card=document.createElement('div');card.className='item';
+    const title=document.createElement('strong');title.textContent=`#${r.id} · ${clean(r.descripcion)}`;card.append(title);
+    const detail=document.createElement('p');detail.textContent=`Puesto: ${clean(r.puesto_servicio)||'—'} | Prioridad: ${clean(r.prioridad)} | Estado: ${clean(r.estado)} | Responsable: ${clean(r.responsable)||'—'}`;card.append(detail);
+    const meta=document.createElement('small');meta.textContent=`Registró: ${clean(r.operador_registra)||'—'} · Fecha: ${format(r.fecha_registro||r.fecha_creacion)} · Límite: ${format(r.fecha_limite)}`;card.append(meta);
+    const sel=document.createElement('select');sel.style.marginTop='12px';
+    for(const status of ['Pendiente','Cumplida','Reprogramada']){const opt=document.createElement('option');opt.textContent=status;opt.value=status;sel.append(opt)}
+    sel.value=r.estado||'Pendiente';
+    const previous=document.createElement('div');previous.className='history';
+    const historyTitle=document.createElement('strong');historyTitle.textContent='Observaciones registradas';previous.append(historyTitle);
+    const historyText=document.createElement('p');historyText.className='history-text';historyText.textContent=r.observaciones||'Sin observaciones.';previous.append(historyText);
+    const notes=document.createElement('textarea');notes.placeholder='Escriba una NUEVA observación (no modifica las anteriores)';notes.rows=2;notes.style.marginTop='8px';notes.setAttribute('aria-label','Nueva observación');
+    const button=document.createElement('button');button.textContent='Guardar seguimiento';
+    button.onclick=async()=>{
+      button.disabled=true;
+      try{
+        const added=notes.value.trim();
+        if(sel.value===r.estado&&!added)throw Error('Seleccione un estado diferente o escriba una nueva observación.');
+        // Recuperar el último texto guardado para no depender de una lista desactualizada.
+        const {data:latest,error:readError}=await client.from('consignas').select('observaciones,estado').eq('id',r.id).single();
+        if(readError)throw readError;
+        const before=clean(latest.observaciones).trim();
+        const entry=added?`[${new Date().toLocaleString('es-CO')}] ${profile.nombre||'Usuario'}: ${added}`:'';
+        const changes={estado:sel.value,fecha_actualizacion:new Date().toISOString()};
+        if(entry)changes.observaciones=before?`${before}\n\n${entry}`:entry;
+        if(sel.value==='Cumplida'&&latest.estado!=='Cumplida')changes.fecha_cumplimiento=new Date().toISOString();
+        if(sel.value!=='Cumplida'&&latest.estado==='Cumplida')changes.fecha_cumplimiento=null;
+        const {error}=await client.from('consignas').update(changes).eq('id',r.id);
+        if(error)throw error;
+        notes.value='';await load();
+      }catch(err){alert('No se pudo actualizar: '+err.message)}finally{button.disabled=false}
+    };
+    card.append(sel,previous,notes,button);$('list').append(card)
+  }
+}
 $('filter').onchange=render;$('search').oninput=render;$('refresh').onclick=load;
 try{const url=localStorage.getItem('supabase_url'),key=localStorage.getItem('supabase_public_key');if(url&&key){$('url').value=url;$('key').value=key;saveConfig();checkSession()}}catch(e){msg('setupMsg',e.message,true)}
 
