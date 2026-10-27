@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Central de Monitoreo | Consignas</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}header{background:#102d4d;color:white;padding:20px}main{max-width:1050px;margin:24px auto;padding:0 16px}.panel{background:white;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 9px #0001}h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem}label{display:block;font-weight:600;margin:12px 0 4px}input,select,textarea,button{font:inherit;padding:10px;border-radius:7px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:85px}button{background:#14558c;color:white;border:0;cursor:pointer;margin-top:12px}button.secondary{background:#475569}button:disabled{opacity:.55;cursor:wait}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.hidden{display:none}.muted{color:#64748b}.error{color:#a11b1b}.ok{color:#166534}.item{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}small{color:#64748b}#list{max-height:65vh;overflow:auto}.alert-panel{border-left:5px solid #d97706;background:#fffbeb;padding:12px;border-radius:8px;margin:10px 0}.urgent{border-left:5px solid #dc2626}.overdue{background:#fff1f2}.ack{background:#edfdf4;border:1px solid #86efac;border-radius:8px;padding:10px;margin-top:12px}.ack button{margin-right:10px}.alert-controls{margin-bottom:12px}.history{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:10px;margin-top:12px}.history-text{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}
+</style>
+</head>
+<body><header><h1>Central de Monitoreo</h1><div>Gestión de consignas · Vigilamos Juntos Seguridad Ltda. · Versión de prueba · Enterado y alertas</div></header><main>
+<section class="panel" id="setup"><h2>Configuración inicial</h2><p class="muted">Antes de usar la aplicación, escribe la URL del proyecto Supabase y su clave <b>pública</b> (sb_publishable_...). Nunca ingreses una clave secreta.</p><label>URL de Supabase</label><input id="url" placeholder="https://proyecto.supabase.co"><label>Clave pública</label><input id="key" placeholder="sb_publishable_..."><button id="configure">Conectar</button><p id="setupMsg"></p></section>
+<section class="panel hidden" id="login"><h2>Ingreso de operadores</h2><label>Correo electrónico</label><input id="email" type="email" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"><button id="signIn">Ingresar</button><p id="loginMsg"></p></section>
+<section class="panel hidden" id="reset"><h2>Establecer nueva contraseña</h2><p class="muted">Llegaste desde el correo de recuperación. Escribe una contraseña nueva para tu cuenta.</p><label for="newPassword">Nueva contraseña</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12"><label for="confirmPassword">Confirmar contraseña</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12"><button id="saveNewPassword" type="button">Guardar nueva contraseña</button><p id="resetMsg" role="status"></p></section>
+<div class="hidden" id="app"><section class="panel top"><div><strong id="identity"></strong><div class="muted" id="role"></div></div><button class="secondary" id="signOut">Cerrar sesión</button></section>
+<section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea>
+<button type="button" id="microfono" onclick="dictarConsigna()">🎤 Dictar consigna</button>                                                                                                                                                                <div class="grid"><div><label>Puesto o servicio</label><input id="post" placeholder="Ej. Central de Monitoreo"></div><div><label>Prioridad</label><select id="priority"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baja</option></select></div><div><label>Responsable</label><input id="responsible"></div><div><label>Fecha límite (opcional)</label><input id="deadline" type="datetime-local"></div></div><button type="submit">Registrar consigna</button><p id="createMsg"></p></form></section>
+<section class="panel"><div class="top"><h2>Consignas registradas</h2><button id="refresh" class="secondary">Actualizar lista</button></div><div class="grid"><div><label>Filtrar por estado</label><select id="filter"><option value="">Todos</option><option>Pendiente</option><option>Cumplida</option><option>Reprogramada</option></select></div><div><label>Buscar</label><input id="search" placeholder="Descripción, puesto, responsable"></div></div><div class="alert-controls"><button type="button" id="soundToggle" class="secondary">Activar avisos sonoros</button><p class="muted" id="soundMsg">El sonido funciona mientras esta página esté abierta y se haya activado.</p><div id="alertSummary" role="status" aria-live="polite"></div></div><p id="listMsg"></p><div id="list"></div></section></div>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const $=id=>document.getElementById(id);let client=null,profile=null,records=[],confirmaciones=[],currentUserId=null,soundEnabled=false,audioContext=null;const soundedAlerts=new Set();
+const msg=(id,text,error=false)=>{$(id).textContent=text;$(id).className=error?'error':'ok'};
+const clean=s=>String(s??'');const format=d=>d?new Date(d).toLocaleString('es-CO'): '—';
+// Capturamos la intención antes de que supabase-js procese los parámetros de recuperación.
+let recoveryIntent = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery' || new URLSearchParams(location.search).get('type') === 'recovery';
+function showReset(){recoveryIntent=true;$('setup').classList.add('hidden');$('login').classList.add('hidden');$('app').classList.add('hidden');$('reset').classList.remove('hidden')}
+const saveConfig=()=>{const url=$('url').value.trim().replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');const key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||!key.startsWith('sb_publishable_'))throw Error('Revisa la URL y la clave pública de Supabase.');if(!window.supabase)throw Error('No se pudo cargar Supabase. Comprueba tu conexión a Internet.');localStorage.setItem('supabase_url',url);localStorage.setItem('supabase_public_key',key);client=window.supabase.createClient(url,key,{auth:{detectSessionInUrl:true}});client.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showReset()});$('setup').classList.add('hidden');if(recoveryIntent)showReset();else $('login').classList.remove('hidden')};
+$('configure').onclick=()=>{try{saveConfig();msg('setupMsg','');checkSession()}catch(e){msg('setupMsg',e.message,true)}};
+async function checkSession(){if(!client)return;const {data:{session},error}=await client.auth.getSession();if(recoveryIntent){showReset();if(error||!session)msg('resetMsg','El enlace no se pudo validar o expiró. Solicita un correo de recuperación nuevo y ábrelo de nuevo.',true);return}if(session)await openApp(session.user);else{$('login').classList.remove('hidden');$('app').classList.add('hidden')}}
+$('saveNewPassword').onclick=async()=>{const btn=$('saveNewPassword');const password=$('newPassword').value;if(password.length<12){msg('resetMsg','La contraseña debe tener al menos 12 caracteres.',true);return}if(password!==$('confirmPassword').value){msg('resetMsg','Las contraseñas no coinciden.',true);return}btn.disabled=true;try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError||!session)throw Error('El enlace expiró o no se validó. Solicita uno nuevo.');const {error}=await client.auth.updateUser({password});if(error)throw error;await client.auth.signOut();$('newPassword').value='';$('confirmPassword').value='';recoveryIntent=false;history.replaceState(null,'',location.pathname);$('reset').classList.add('hidden');$('login').classList.remove('hidden');msg('loginMsg','Contraseña actualizada. Ya puedes iniciar sesión.');}catch(e){msg('resetMsg',e.message,true)}finally{btn.disabled=false}};
+async function openApp(user){const {data,error}=await client.from('perfiles').select('nombre,rol').eq('id',user.id).single();if(error||!data||!['operador','administrador'].includes(data.rol)){await client.auth.signOut();msg('loginMsg','No hay un perfil autorizado para esta cuenta. Consulta al administrador.',true);return}profile=data;currentUserId=user.id;$('identity').textContent=data.nombre||user.email;$('role').textContent=data.rol;$('login').classList.add('hidden');$('app').classList.remove('hidden');await load()}
+$('signIn').onclick=async()=>{const btn=$('signIn');btn.disabled=true;msg('loginMsg','Ingresando...');try{const {data,error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await openApp(data.user)}catch(e){msg('loginMsg',e.message,true)}finally{btn.disabled=false}};
+$('signOut').onclick=async()=>{await client.auth.signOut();profile=null;currentUserId=null;confirmaciones=[];soundEnabled=false;soundedAlerts.clear();$('soundToggle').textContent='Activar avisos sonoros';$('app').classList.add('hidden');$('login').classList.remove('hidden');$('password').value=''};
+$('createForm').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;msg('createMsg','Guardando...');try{const payload={creado_por:(await client.auth.getUser()).data.user.id,descripcion:$('description').value.trim(),puesto_servicio:$('post').value.trim()||null,prioridad:$('priority').value,estado:'Pendiente',responsable:$('responsible').value.trim()||null,operador_registra:profile.nombre||null,fecha_limite:$('deadline').value?new Date($('deadline').value).toISOString():null};if(!payload.descripcion)throw Error('Escribe una descripción.');const {error}=await client.from('consignas').insert(payload);if(error)throw error;msg('createMsg','Consigna registrada correctamente.');e.target.reset();await load()}catch(err){msg('createMsg',err.message,true)}finally{btn.disabled=false}};
+async function load(){
+  msg('listMsg','Cargando...');
+  const {data,error}=await client.from('consignas').select('*').order('id',{ascending:false}).limit(200);
+  if(error){msg('listMsg',error.message,true);return}
+  const {data:acks,error:ackError}=await client.from('confirmaciones_lectura').select('consigna_id,usuario_id,fecha_confirmacion');
+  if(ackError){msg('listMsg','No se pudieron consultar las confirmaciones: '+ackError.message,true);return}
+  records=data||[];confirmaciones=acks||[];
+  msg('listMsg',`${records.length} consigna(s) cargada(s).`);render();
+} 
+const ackFor=r=>confirmaciones.find(c=>c.consigna_id===r.id&&c.usuario_id===currentUserId);
+function alertType(r){
+  if(r.estado==='Cumplida')return null;
+  if(r.fecha_limite&&new Date(r.fecha_limite).getTime()<Date.now())return 'Vencida';
+  if(r.prioridad==='Urgente'||r.prioridad==='Alta')return 'Prioridad '+r.prioridad;
+  return null;
+}
+function beep(){
+  if(!soundEnabled)return;
+  try{
+    audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();
+    if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+    const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+    osc.type='sine';osc.frequency.value=740;gain.gain.setValueAtTime(0.035,audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,audioContext.currentTime+0.27);
+    osc.connect(gain);gain.connect(audioContext.destination);osc.start();osc.stop(audioContext.currentTime+0.28);
+  }catch(e){$('soundMsg').textContent='No se pudo reproducir el sonido en este navegador.'}
+}
+function updateAlerts(){
+  if(!profile)return;
+  const pending=records.filter(r=>alertType(r)&&!ackFor(r));
+  const banner=$('alertSummary');banner.replaceChildren();
+  if(pending.length){banner.className='alert-panel';banner.textContent=`Tiene ${pending.length} consigna(s) de prioridad alta, urgente o vencida(s) sin confirmar lectura en esta cuenta.`}
+  else{banner.className='';banner.textContent='No hay alertas pendientes de lectura para esta cuenta.'}
+  if(soundEnabled){for(const r of pending){const type=alertType(r);const key=r.id+':'+type;
+    if(!soundedAlerts.has(key)){soundedAlerts.add(key);beep();}
+  }}
+}
+$('soundToggle').onclick=async()=>{
+  soundEnabled=!soundEnabled;
+  if(soundEnabled){
+    try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();await audioContext.resume()}catch(e){}
+    soundedAlerts.clear();$('soundToggle').textContent='Desactivar avisos sonoros';
+    $('soundMsg').textContent='Avisos activados. Sonarán una vez por alerta detectada mientras mantenga la página abierta.';
+  }else{$('soundToggle').textContent='Activar avisos sonoros';$('soundMsg').textContent='Avisos sonoros desactivados.'}
+  updateAlerts();
+};
+setInterval(updateAlerts,60000);
+
+function render(){
+  const state=$('filter').value, query=$('search').value.toLowerCase();
+  $('list').replaceChildren();
+  const filtered=records.filter(r=>(!state||r.estado===state)&&[r.descripcion,r.puesto_servicio,r.responsable].some(v=>clean(v).toLowerCase().includes(query)));
+  if(!filtered.length){$('list').textContent='No hay consignas para mostrar.';return}
+  for(const r of filtered){
+    const card=document.createElement('div');card.className='item';const kind=alertType(r);if(kind){card.classList.add('urgent');if(kind==='Vencida')card.classList.add('overdue');const warning=document.createElement('div');warning.className='alert-panel';warning.textContent='Aviso: '+kind;card.append(warning)}
+    const title=document.createElement('strong');title.textContent=`#${r.id} · ${clean(r.descripcion)}`;card.append(title);
+    const detail=document.createElement('p');detail.textContent=`Puesto: ${clean(r.puesto_servicio)||'—'} | Prioridad: ${clean(r.prioridad)} | Estado: ${clean(r.estado)} | Responsable: ${clean(r.responsable)||'—'}`;card.append(detail);
+    const meta=document.createElement('small');meta.textContent=`Registró: ${clean(r.operador_registra)||'—'} · Fecha: ${format(r.fecha_registro||r.fecha_creacion)} · Límite: ${format(r.fecha_limite)}`;card.append(meta);
+    const sel=document.createElement('select');sel.style.marginTop='12px';
+    for(const status of ['Pendiente','Cumplida','Reprogramada']){const opt=document.createElement('option');opt.textContent=status;opt.value=status;sel.append(opt)}
+    sel.value=r.estado||'Pendiente';
+    const previous=document.createElement('div');previous.className='history';
+    const historyTitle=document.createElement('strong');historyTitle.textContent='Observaciones registradas';previous.append(historyTitle);
+    const historyText=document.createElement('p');historyText.className='history-text';historyText.textContent=r.observaciones||'Sin observaciones.';previous.append(historyText);
+    const notes=document.createElement('textarea');notes.placeholder='Escriba una NUEVA observación (no modifica las anteriores)';notes.rows=2;notes.style.marginTop='8px';notes.setAttribute('aria-label','Nueva observación');
+    const button=document.createElement('button');button.textContent='Guardar seguimiento';
+    button.onclick=async()=>{
+      button.disabled=true;
+      try{
+        const added=notes.value.trim();
+        if(sel.value===r.estado&&!added)throw Error('Seleccione un estado diferente o escriba una nueva observación.');
+        // Recuperar el último texto guardado para no depender de una lista desactualizada.
+        const {data:latest,error:readError}=await client.from('consignas').select('observaciones,estado').eq('id',r.id).single();
+        if(readError)throw readError;
+        const before=clean(latest.observaciones).trim();
+        const entry=added?`[${new Date().toLocaleString('es-CO')}] ${profile.nombre||'Usuario'}: ${added}`:'';
+        const changes={estado:sel.value,fecha_actualizacion:new Date().toISOString()};
+        if(entry)changes.observaciones=before?`${before}\n\n${entry}`:entry;
+        if(sel.value==='Cumplida'&&latest.estado!=='Cumplida')changes.fecha_cumplimiento=new Date().toISOString();
+        if(sel.value!=='Cumplida'&&latest.estado==='Cumplida')changes.fecha_cumplimiento=null;
+        const {error}=await client.from('consignas').update(changes).eq('id',r.id);
+        if(error)throw error;
+        notes.value='';await load();
+      }catch(err){alert('No se pudo actualizar: '+err.message)}finally{button.disabled=false}
+    };
+    const ack=document.createElement('div');ack.className='ack';
+    const acknowledgement=ackFor(r);
+    if(acknowledgement){ack.textContent=`Enterado confirmado por esta cuenta el ${format(acknowledgement.fecha_confirmacion)}.`}
+    else{
+      const ackButton=document.createElement('button');ackButton.type='button';ackButton.textContent='Enterado';
+      const ackMsg=document.createElement('span');ackMsg.setAttribute('role','status');
+      ackButton.onclick=async()=>{
+        ackButton.disabled=true;ackMsg.textContent='Registrando...';
+        try{
+          const {error}=await client.from('confirmaciones_lectura').insert({consigna_id:r.id,usuario_id:currentUserId});
+          if(error&&error.code!=='23505')throw error;
+          const {data,error:readError}=await client.from('confirmaciones_lectura').select('consigna_id,usuario_id,fecha_confirmacion').eq('consigna_id',r.id).eq('usuario_id',currentUserId).single();
+          if(readError)throw readError;
+          confirmaciones=confirmaciones.filter(c=>!(c.consigna_id===r.id&&c.usuario_id===currentUserId));
+          confirmaciones.push(data);render();
+        }catch(e){ackMsg.textContent='Error: '+e.message;ackButton.disabled=false}
+      };
+      ack.append(ackButton,ackMsg);
+    }
+    card.append(ack,sel,previous,notes,button);$('list').append(card)
+  }
+  updateAlerts();
+}
+$('filter').onchange=render;$('search').oninput=render;$('refresh').onclick=load;
+try{const url=localStorage.getItem('supabase_url'),key=localStorage.getItem('supabase_public_key');if(url&&key){$('url').value=url;$('key').value=key;saveConfig();checkSession()}}catch(e){msg('setupMsg',e.message,true)}
+
+function dictarConsigna() {
+  const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!Reconocimiento) {
+    alert("El navegador no permite dictado por voz. Pruebe con Google Chrome.");
+    return;
+  }
+
+  const reconocimiento = new Reconocimiento();
+  reconocimiento.lang = "es-CO";
+  reconocimiento.continuous = false;
+  reconocimiento.interimResults = false;
+
+  reconocimiento.onresult = function(evento) {
+    const campo = document.getElementById("description");
+    let texto = "";
+
+    for (let i = evento.resultIndex; i < evento.results.length; i++) {
+      if (evento.results[i].isFinal) {
+        texto += evento.results[i][0].transcript + " ";
+      }
+    }
+
+    campo.value += (campo.value && texto ? " " : "") + texto.trim();
+  };
+
+  reconocimiento.onerror = function(evento) {
+    alert("No se pudo utilizar el micrófono: " + evento.error);
+  };
+
+  reconocimiento.start();
+}
+
+</script></body></html>
