@@ -5,30 +5,106 @@
 <title>Central de Monitoreo | Consignas</title>
 <style>
 :root{font-family:system-ui,Arial,sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}header{background:#102d4d;color:white;padding:20px}main{max-width:1050px;margin:24px auto;padding:0 16px}.panel{background:white;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 9px #0001}h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem}label{display:block;font-weight:600;margin:12px 0 4px}input,select,textarea,button{font:inherit;padding:10px;border-radius:7px;border:1px solid #cbd5e1}input,select,textarea{width:100%}textarea{min-height:85px}button{background:#14558c;color:white;border:0;cursor:pointer;margin-top:12px}button.secondary{background:#475569}button:disabled{opacity:.55;cursor:wait}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.hidden{display:none}.muted{color:#64748b}.error{color:#a11b1b}.ok{color:#166534}.item{border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin:10px 0;overflow-wrap:anywhere}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}small{color:#64748b}#list{max-height:65vh;overflow:auto}.alert-panel{border-left:5px solid #d97706;background:#fffbeb;padding:12px;border-radius:8px;margin:10px 0}.urgent{border-left:5px solid #dc2626}.overdue{background:#fff1f2}.ack{background:#edfdf4;border:1px solid #86efac;border-radius:8px;padding:10px;margin-top:12px}.ack button{margin-right:10px}.alert-controls{margin-bottom:12px}.history{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:10px;margin-top:12px}.history-text{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:0}
+#masterPanel table{width:100%;border-collapse:collapse}#masterPanel th,#masterPanel td{border-bottom:1px solid #e2e8f0;padding:9px;text-align:left}#masterPanel select{min-width:175px}#masterPanel .table-wrap{overflow-x:auto}#masterPanel button{margin:3px}#masterPanel .warning{color:#9a3412}
 </style>
 </head>
 <body><header><h1>Central de Monitoreo</h1><div>Gestión de consignas · Vigilamos Juntos Seguridad Ltda. · Versión de prueba · Enterado y alertas</div></header><main>
 <section class="panel" id="setup"><h2>Configuración inicial</h2><p class="muted">Antes de usar la aplicación, escribe la URL del proyecto Supabase y su clave <b>pública</b> (sb_publishable_...). Nunca ingreses una clave secreta.</p><label>URL de Supabase</label><input id="url" placeholder="https://proyecto.supabase.co"><label>Clave pública</label><input id="key" placeholder="sb_publishable_..."><button id="configure">Conectar</button><p id="setupMsg"></p></section>
 <section class="panel hidden" id="login"><h2>Ingreso de operadores</h2><label>Correo electrónico</label><input id="email" type="email" autocomplete="username"><label>Contraseña</label><input id="password" type="password" autocomplete="current-password"><button id="signIn">Ingresar</button><p id="loginMsg"></p></section>
-<section class="panel hidden" id="reset"><h2>Establecer nueva contraseña</h2><p class="muted">Llegaste desde el correo de recuperación. Escribe una contraseña nueva para tu cuenta.</p><label for="newPassword">Nueva contraseña</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12"><label for="confirmPassword">Confirmar contraseña</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12"><button id="saveNewPassword" type="button">Guardar nueva contraseña</button><p id="resetMsg" role="status"></p></section>
+<section class="panel hidden" id="reset"><h2>Establecer nueva contraseña</h2><p class="muted">Si recibiste una invitación o solicitaste recuperar tu cuenta, establece una contraseña nueva. No compartas tu contraseña con nadie.</p><label for="newPassword">Nueva contraseña</label><input id="newPassword" type="password" autocomplete="new-password" minlength="12"><label for="confirmPassword">Confirmar contraseña</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="12"><button id="saveNewPassword" type="button">Guardar nueva contraseña</button><p id="resetMsg" role="status"></p></section>
 <div class="hidden" id="app"><section class="panel top"><div><strong id="identity"></strong><div class="muted" id="role"></div></div><button class="secondary" id="signOut">Cerrar sesión</button></section>
 <section class="panel"><h2>Nueva consigna</h2><form id="createForm"><label>Descripción</label><textarea id="description" required maxlength="4000"></textarea>
 <button type="button" id="microfono" onclick="dictarConsigna()">🎤 Dictar consigna</button>                                                                                                                                                                <div class="grid"><div><label>Puesto o servicio</label><input id="post" placeholder="Ej. Central de Monitoreo"></div><div><label>Prioridad</label><select id="priority"><option>Normal</option><option>Alta</option><option>Urgente</option><option>Baja</option></select></div><div><label>Responsable</label><input id="responsible"></div><div><label>Fecha límite (opcional)</label><input id="deadline" type="datetime-local"></div></div><button type="submit">Registrar consigna</button><p id="createMsg"></p></form></section>
-<section class="panel"><div class="top"><h2>Consignas registradas</h2><button id="refresh" class="secondary">Actualizar lista</button></div><div class="grid"><div><label>Filtrar por estado</label><select id="filter"><option value="">Todos</option><option>Pendiente</option><option>Cumplida</option><option>Reprogramada</option></select></div><div><label>Buscar</label><input id="search" placeholder="Descripción, puesto, responsable"></div></div><div class="alert-controls"><button type="button" id="soundToggle" class="secondary">Activar avisos sonoros</button><p class="muted" id="soundMsg">El sonido funciona mientras esta página esté abierta y se haya activado.</p><div id="alertSummary" role="status" aria-live="polite"></div></div><p id="listMsg"></p><div id="list"></div></section></div>
+<section class="panel"><div class="top"><h2>Consignas registradas</h2><button id="refresh" class="secondary">Actualizar lista</button></div><div class="grid"><div><label>Filtrar por estado</label><select id="filter"><option value="">Todos</option><option>Pendiente</option><option>Cumplida</option><option>Reprogramada</option></select></div><div><label>Buscar</label><input id="search" placeholder="Descripción, puesto, responsable"></div></div><div class="alert-controls"><button type="button" id="soundToggle" class="secondary">Activar avisos sonoros</button><p class="muted" id="soundMsg">El sonido funciona mientras esta página esté abierta y se haya activado.</p><div id="alertSummary" role="status" aria-live="polite"></div></div><p id="listMsg"></p><div id="list"></div></section>
+<section class="panel hidden" id="masterPanel"><h2>Panel Máster · Administración de usuarios</h2><p class="muted">Solo el administrador principal autorizado puede cambiar roles. Las modificaciones quedan registradas en el historial de Supabase.</p><form id="masterInviteForm" class="item" autocomplete="off"><h3>Invitar nuevo usuario</h3><p class="muted">Se envía un correo de invitación. La cuenta se crea con rol pendiente y sin acceso operativo hasta que el Máster la autorice.</p><div class="grid"><div><label for="inviteNombre">Nombre completo</label><input id="inviteNombre" type="text" minlength="3" maxlength="120" required></div><div><label for="inviteCorreo">Correo electrónico</label><input id="inviteCorreo" type="email" maxlength="254" autocomplete="off" required></div></div><button id="inviteEnviar" type="submit">Enviar invitación</button><p id="inviteMsg" role="status" aria-live="polite"></p></form><div class="top"><h3>Usuarios registrados</h3><button type="button" id="masterReload" class="secondary">Actualizar usuarios</button></div><p id="masterMsg" role="status"></p><div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Rol actual</th><th>Nuevo rol</th><th>Acción</th></tr></thead><tbody id="masterUsers"></tbody></table></div><h3>Historial de cambios de roles</h3><button type="button" class="secondary" id="masterHistoryReload">Actualizar historial</button><p id="masterHistoryMsg" role="status"></p><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Usuario (ID)</th><th>Rol anterior</th><th>Rol nuevo</th><th>Modificado por (ID)</th></tr></thead><tbody id="masterHistory"></tbody></table></div><p class="muted">La invitación crea usuarios con estado pendiente. La suspensión de accesos, permisos por área y notificaciones siguen pendientes de desarrollo.</p></section>
+</div>
 </main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const $=id=>document.getElementById(id);let client=null,profile=null,records=[],confirmaciones=[],currentUserId=null,soundEnabled=false,audioContext=null;const soundedAlerts=new Set();
 const msg=(id,text,error=false)=>{$(id).textContent=text;$(id).className=error?'error':'ok'};
 const clean=s=>String(s??'');const format=d=>d?new Date(d).toLocaleString('es-CO'): '—';
-// Capturamos la intención antes de que supabase-js procese los parámetros de recuperación.
-let recoveryIntent = new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery' || new URLSearchParams(location.search).get('type') === 'recovery';
-function showReset(){recoveryIntent=true;$('setup').classList.add('hidden');$('login').classList.add('hidden');$('app').classList.add('hidden');$('reset').classList.remove('hidden')}
-const saveConfig=()=>{const url=$('url').value.trim().replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');const key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||!key.startsWith('sb_publishable_'))throw Error('Revisa la URL y la clave pública de Supabase.');if(!window.supabase)throw Error('No se pudo cargar Supabase. Comprueba tu conexión a Internet.');localStorage.setItem('supabase_url',url);localStorage.setItem('supabase_public_key',key);client=window.supabase.createClient(url,key,{auth:{detectSessionInUrl:true}});client.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showReset()});$('setup').classList.add('hidden');if(recoveryIntent)showReset();else $('login').classList.remove('hidden')};
+// Puedes colocar aquí SOLO la URL y la clave pública sb_publishable_ de tu proyecto.
+// No introduzcas nunca service_role ni claves secretas en este archivo.
+const PROJECT_URL = 'https://grohivlbaxrmczheurgx.supabase.co';
+const PUBLISHABLE_KEY = 'sb_publishable_P2qhxsltjWtHHk1SdcTX6g_q9v7fi1G';
+const linkParams = new URLSearchParams(location.hash.slice(1));
+const queryParams = new URLSearchParams(location.search);
+const linkType = linkParams.get('type') || queryParams.get('type') || '';
+let passwordFlow = ['invite','recovery'].includes(linkType);
+let pendingLinkError = linkParams.get('error_description') || queryParams.get('error_description') || '';
+function showPasswordFlow(){
+  passwordFlow=true;
+  $('setup').classList.add('hidden');
+  $('login').classList.add('hidden');
+  $('app').classList.add('hidden');
+  $('reset').classList.remove('hidden');
+}
+const saveConfig=()=>{
+ const url=$('url').value.trim().replace(/\/rest\/v1\/?$/,'').replace(/\/$/,'');
+ const key=$('key').value.trim();
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||!key.startsWith('sb_publishable_')) throw Error('Revisa la URL y la clave pública de Supabase.');
+ if(!window.supabase) throw Error('No se pudo cargar Supabase. Comprueba tu conexión a Internet.');
+ localStorage.setItem('supabase_url',url);
+ localStorage.setItem('supabase_public_key',key);
+ client=window.supabase.createClient(url,key,{auth:{detectSessionInUrl:true}});
+ client.auth.onAuthStateChange((event)=>{
+   if(event==='PASSWORD_RECOVERY')showPasswordFlow();
+ });
+ $('setup').classList.add('hidden');
+ if(passwordFlow)showPasswordFlow();else $('login').classList.remove('hidden');
+};
 $('configure').onclick=()=>{try{saveConfig();msg('setupMsg','');checkSession()}catch(e){msg('setupMsg',e.message,true)}};
-async function checkSession(){if(!client)return;const {data:{session},error}=await client.auth.getSession();if(recoveryIntent){showReset();if(error||!session)msg('resetMsg','El enlace no se pudo validar o expiró. Solicita un correo de recuperación nuevo y ábrelo de nuevo.',true);return}if(session)await openApp(session.user);else{$('login').classList.remove('hidden');$('app').classList.add('hidden')}}
-$('saveNewPassword').onclick=async()=>{const btn=$('saveNewPassword');const password=$('newPassword').value;if(password.length<12){msg('resetMsg','La contraseña debe tener al menos 12 caracteres.',true);return}if(password!==$('confirmPassword').value){msg('resetMsg','Las contraseñas no coinciden.',true);return}btn.disabled=true;try{const {data:{session},error:sessionError}=await client.auth.getSession();if(sessionError||!session)throw Error('El enlace expiró o no se validó. Solicita uno nuevo.');const {error}=await client.auth.updateUser({password});if(error)throw error;await client.auth.signOut();$('newPassword').value='';$('confirmPassword').value='';recoveryIntent=false;history.replaceState(null,'',location.pathname);$('reset').classList.add('hidden');$('login').classList.remove('hidden');msg('loginMsg','Contraseña actualizada. Ya puedes iniciar sesión.');}catch(e){msg('resetMsg',e.message,true)}finally{btn.disabled=false}};
-async function openApp(user){const {data,error}=await client.from('perfiles').select('nombre,rol').eq('id',user.id).single();if(error||!data||!['operador','administrador'].includes(data.rol)){await client.auth.signOut();msg('loginMsg','No hay un perfil autorizado para esta cuenta. Consulta al administrador.',true);return}profile=data;currentUserId=user.id;$('identity').textContent=data.nombre||user.email;$('role').textContent=data.rol;$('login').classList.add('hidden');$('app').classList.remove('hidden');await load()}
+async function checkSession(){
+ if(!client)return;
+ if(pendingLinkError){
+   $('setup').classList.add('hidden');$('reset').classList.remove('hidden');
+   msg('resetMsg','El enlace no es válido o venció. Solicita una nueva invitación.',true);return;
+ }
+ // Supabase procesa los tokens de invitación en la URL al inicializar el cliente.
+ // Dar tiempo al cliente para completar el intercambio de sesión.
+ if(passwordFlow) await new Promise(resolve=>setTimeout(resolve,800));
+ const {data:{session},error}=await client.auth.getSession();
+ if(passwordFlow){
+   showPasswordFlow();
+   if(error||!session)msg('resetMsg','No se pudo verificar el enlace de invitación. Solicita uno nuevo si expiró.',true);
+   return;
+ }
+ if(session)await openApp(session.user);
+ else{$('login').classList.remove('hidden');$('app').classList.add('hidden')}
+}
+$('saveNewPassword').onclick=async()=>{
+ const btn=$('saveNewPassword');const password=$('newPassword').value;
+ if(password.length<12){msg('resetMsg','La contraseña debe tener al menos 12 caracteres.',true);return}
+ if(password!==$('confirmPassword').value){msg('resetMsg','Las contraseñas no coinciden.',true);return}
+ btn.disabled=true;
+ try{
+   const {data:{session},error:sessionError}=await client.auth.getSession();
+   if(sessionError||!session)throw Error('La invitación no se ha validado. Solicita un enlace nuevo si expiró.');
+   const {error}=await client.auth.updateUser({password});if(error)throw error;
+   await client.auth.signOut();
+   $('newPassword').value='';$('confirmPassword').value='';passwordFlow=false;
+   history.replaceState(null,'',location.pathname);
+   $('reset').classList.add('hidden');$('login').classList.remove('hidden');
+   msg('loginMsg','Contraseña establecida. La cuenta permanecerá pendiente hasta que el Máster autorice su acceso.');
+ }catch(e){msg('resetMsg',e.message,true)}finally{btn.disabled=false}
+};
+async function openApp(user){
+ const {data,error}=await client.from('perfiles').select('nombre,rol,es_master').eq('id',user.id).single();
+ if(error||!data||!['operador','operador_central','administrador'].includes(data.rol)){
+  await client.auth.signOut();msg('loginMsg','No hay un perfil autorizado para esta cuenta. Consulta al administrador.',true);return;
+ }
+ profile=data;currentUserId=user.id;$('identity').textContent=data.nombre||user.email;
+ $('role').textContent=data.rol+(data.es_master===true?' · Máster':'');
+ $('login').classList.add('hidden');$('app').classList.remove('hidden');
+ $('masterPanel').classList.add('hidden');
+ // La condición visual NO confiere permisos; los RPC y RLS de Supabase los verifican.
+ if(data.rol==='administrador'&&data.es_master===true){
+   const {error:verifyError}=await client.rpc('master_consultar_historial');
+   if(!verifyError){$('masterPanel').classList.remove('hidden');await Promise.all([loadMasterUsers(),loadMasterHistory()]);}
+ }
+ await load();
+}
 $('signIn').onclick=async()=>{const btn=$('signIn');btn.disabled=true;msg('loginMsg','Ingresando...');try{const {data,error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await openApp(data.user)}catch(e){msg('loginMsg',e.message,true)}finally{btn.disabled=false}};
-$('signOut').onclick=async()=>{await client.auth.signOut();profile=null;currentUserId=null;confirmaciones=[];soundEnabled=false;soundedAlerts.clear();$('soundToggle').textContent='Activar avisos sonoros';$('app').classList.add('hidden');$('login').classList.remove('hidden');$('password').value=''};
+$('signOut').onclick=async()=>{await client.auth.signOut();profile=null;currentUserId=null;confirmaciones=[];soundEnabled=false;soundedAlerts.clear();$('soundToggle').textContent='Activar avisos sonoros';$('app').classList.add('hidden');$('masterPanel').classList.add('hidden');$('login').classList.remove('hidden');$('password').value=''};
 $('createForm').onsubmit=async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;msg('createMsg','Guardando...');try{const payload={creado_por:(await client.auth.getUser()).data.user.id,descripcion:$('description').value.trim(),puesto_servicio:$('post').value.trim()||null,prioridad:$('priority').value,estado:'Pendiente',responsable:$('responsible').value.trim()||null,operador_registra:profile.nombre||null,fecha_limite:$('deadline').value?new Date($('deadline').value).toISOString():null};if(!payload.descripcion)throw Error('Escribe una descripción.');const {error}=await client.from('consignas').insert(payload);if(error)throw error;msg('createMsg','Consigna registrada correctamente.');e.target.reset();await load()}catch(err){msg('createMsg',err.message,true)}finally{btn.disabled=false}};
 async function load(){
   msg('listMsg','Cargando...');
@@ -138,8 +214,81 @@ function render(){
   }
   updateAlerts();
 }
+// Administración Máster: todas las operaciones sensibles se autorizan en Supabase.
+const masterRoles=['operador_central','administrador','analista_turnos','pendiente'];
+function masterCell(row,text){const cell=document.createElement('td');cell.textContent=String(text??'—');row.append(cell);return cell;}
+async function loadMasterUsers(){
+ msg('masterMsg','Consultando usuarios...');$('masterUsers').replaceChildren();
+ const {data,error}=await client.from('perfiles').select('id,nombre,rol,es_master').order('nombre');
+ if(error){msg('masterMsg','No se pudieron cargar usuarios: '+error.message,true);return;}
+ for(const u of data||[]){
+  const tr=document.createElement('tr');masterCell(tr,u.nombre||u.id);masterCell(tr,u.rol);
+  const selectCell=document.createElement('td'),actionCell=document.createElement('td');
+  if(u.es_master===true){selectCell.textContent='Cuenta Máster protegida';actionCell.textContent='Sin cambios';}
+  else{
+   const choice=document.createElement('select');choice.setAttribute('aria-label','Nuevo rol para '+(u.nombre||u.id));
+   for(const role of masterRoles){const opt=document.createElement('option');opt.value=role;opt.textContent=role;choice.append(opt)}
+   if(masterRoles.includes(u.rol))choice.value=u.rol;
+   const button=document.createElement('button');button.type='button';button.textContent='Guardar rol';
+   button.onclick=async()=>{
+    if(choice.value===u.rol){msg('masterMsg','Selecciona un rol diferente.');return;}
+    if(!window.confirm('¿Cambiar el rol de '+(u.nombre||u.id)+' de '+u.rol+' a '+choice.value+'?'))return;
+    button.disabled=true;
+    try{
+     const {error}=await client.rpc('master_cambiar_rol',{p_usuario_id:u.id,p_nuevo_rol:choice.value});
+     if(error)throw error;
+     msg('masterMsg','Rol actualizado correctamente.');
+     await Promise.all([loadMasterUsers(),loadMasterHistory()]);
+     msg('masterMsg','Rol actualizado correctamente.');
+    }catch(e){msg('masterMsg','No se pudo cambiar el rol: '+e.message,true);button.disabled=false;}
+   };
+   selectCell.append(choice);actionCell.append(button);
+  }
+  tr.append(selectCell,actionCell);$('masterUsers').append(tr);
+ }
+ if(!data?.length)msg('masterMsg','No se encontraron usuarios.');else msg('masterMsg',data.length+' perfiles cargados.');
+}
+async function loadMasterHistory(){
+ msg('masterHistoryMsg','Consultando historial...');$('masterHistory').replaceChildren();
+ const {data,error}=await client.rpc('master_consultar_historial');
+ if(error){msg('masterHistoryMsg','No se pudo consultar: '+error.message,true);return;}
+ for(const h of data||[]){const tr=document.createElement('tr');
+  for(const value of [format(h.fecha_cambio),h.usuario_id,h.rol_anterior,h.rol_nuevo,h.modificado_por])masterCell(tr,value);
+  $('masterHistory').append(tr);
+ }
+ msg('masterHistoryMsg',(data||[]).length+' cambio(s) en el historial.');
+}
+$('masterInviteForm').onsubmit=async event=>{
+ event.preventDefault();
+ const nombre=$('inviteNombre').value.trim();
+ const correo=$('inviteCorreo').value.trim().toLowerCase();
+ if(nombre.length<3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)){
+  msg('inviteMsg','Escribe un nombre y correo válidos.',true);return;
+ }
+ if(!window.confirm('¿Enviar invitación a '+correo+'? La cuenta quedará pendiente hasta su autorización.'))return;
+ const boton=$('inviteEnviar');boton.disabled=true;msg('inviteMsg','Enviando invitación...');
+ try{
+  const {data:{session},error:sessionError}=await client.auth.getSession();
+  if(sessionError||!session?.access_token)throw Error('Debes iniciar sesión nuevamente.');
+  const endpoint=client.supabaseUrl.replace(/\/$/,'')+'/functions/v1/master-crear-usuario';
+  const response=await fetch(endpoint,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':client.supabaseKey},
+    body:JSON.stringify({nombre,correo})
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.ok)throw Error(result.error||'Error HTTP '+response.status);
+  msg('inviteMsg',result.mensaje||'Invitación enviada; verifica el perfil antes de autorizar.');
+  $('masterInviteForm').reset();
+  await loadMasterUsers();
+ }catch(err){msg('inviteMsg','No se pudo completar la invitación: '+err.message,true)}
+ finally{boton.disabled=false}
+};
+$('masterReload').onclick=loadMasterUsers;
+$('masterHistoryReload').onclick=loadMasterHistory;
+
 $('filter').onchange=render;$('search').oninput=render;$('refresh').onclick=load;
-try{const url=localStorage.getItem('supabase_url'),key=localStorage.getItem('supabase_public_key');if(url&&key){$('url').value=url;$('key').value=key;saveConfig();checkSession()}}catch(e){msg('setupMsg',e.message,true)}
+try{const url=PROJECT_URL||localStorage.getItem('supabase_url'),key=PUBLISHABLE_KEY||localStorage.getItem('supabase_public_key');if(url&&key){$('url').value=url;$('key').value=key;saveConfig();checkSession()}}catch(e){msg('setupMsg',e.message,true)}
 
 function dictarConsigna() {
   const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
